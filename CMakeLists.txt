@@ -2,17 +2,11 @@ cmake_minimum_required(VERSION 3.9)
 project(sayobot-cppcqsdk) # 填写项目名称
 
 set(CMAKE_CXX_STANDARD 17) # 设置 C++ 标准版本为 C++17, 必须
-if (WIN32)
-    set(OS "Win32")
-elseif (APPLE)
-    set(OS "macOS")
-endif()
-
 
 include_directories(src) # 设置 src 目录为包含目录, 可根据实际情况修改
 include_directories(extern/cqcppsdk/include) # 设置 SDK 的 include 目录为包含目录, 必须
 include_directories(extern/mysql/include)
-include_directories(extern/ImageMagick/include/${OS})
+include_directories(extern/ImageMagick/include)
 include_directories(extern/nlohmann_json/include)
 
 link_directories(extern/mysql/lib)
@@ -24,7 +18,7 @@ file(GLOB_RECURSE SOURCE_FILES src/*.cpp) # 递归搜索 src 目录中的源文�
 
 if (WIN32)
     set(LIBS libmysql mysqlclient CORE_RL_Magick++_)
-elseif (APPLE)
+else()
     set(LIBS mysqlclient
             libMagick++-7.Q16HDRI.4.dylib libMagickCore-7.Q16HDRI.7.dylib libMagickWand-7.Q16HDRI.7.dylib)
     message(AUTHOR_WARNING "project will run with dev mode only")
