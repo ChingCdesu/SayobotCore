@@ -12,6 +12,8 @@
 #define BYTE unsigned char
 #endif
 
+#include <curl/curl.h>
+
 #include <iostream>
 #include <json.hpp>
 #include <sstream>
@@ -29,7 +31,7 @@ namespace Sayobot
     public:
         static std::string HttpsGet(const std::string& url)
         {
-#ifdef WIN32
+#ifdef __WIN32
             std::string ret("");
 
             std::wstring wUrl = cq::utils::s2ws(url);
@@ -118,6 +120,7 @@ namespace Sayobot
                 WinHttpCloseHandle(hRequest);
             return ret;
 #endif
+
         }
 
         static void DownloadPic(const std::string& url, const std::string& path)

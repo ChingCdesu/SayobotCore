@@ -14,16 +14,18 @@ include_directories(extern/cqcppsdk/include) # 设置 SDK 的 include 目录为�
 include_directories(extern/mysql/include)
 include_directories(extern/ImageMagick/include/${OS})
 include_directories(extern/nlohmann_json/include)
+include_directories(extern/libcurl/include)
 
 link_directories(extern/mysql/lib)
 link_directories(extern/ImageMagick/lib)
+link_directories(extern/libcurl/lib)
 
 include(extern/cqcppsdk/cqcppsdk.cmake) # 包含 SDK 的 CMake 脚本, 必须
 file(GLOB_RECURSE SOURCE_FILES src/*.cpp) # 递归搜索 src 目录中的源文件, 可根据实际情况修改
 # file(GLOB_RECURSE SOURCE_FILES src/*.hpp)
 
 if (WIN32)
-    set(LIBS libmysql mysqlclient CORE_RL_Magick++_)
+    set(LIBS libmysql mysqlclient CORE_RL_Magick++_ libcurl)
 else()
     set(LIBS mysqlclient
             libMagick++-7.Q16HDRI.4.dylib libMagickCore-7.Q16HDRI.7.dylib libMagickWand-7.Q16HDRI.7.dylib)
