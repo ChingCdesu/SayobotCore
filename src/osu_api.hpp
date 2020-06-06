@@ -17,8 +17,9 @@
 #include "SayobotHttp.hpp"
 #include "json.hpp"
 
-#define OSU_API_V1 "https://api.sayobot.cn/ppy/"
+#define OSU_API_V1 "https://osu.ppy.sh/api/"
 #define OSU_FILE_URL "https://osu.ppy.sh/osu/"
+#define OSU_KEY "1b801cfce36ac400917b3551af8aca91538e8617"
 
 // only for beatmap info with bid
 #define SAYO_API "https://api.sayobot.cn/beatmapinfo?0="
@@ -102,7 +103,7 @@ namespace osu_api {
     public:
         static void GetBeatmap(int bid, beatmap_info *info) {
             char url[512];
-            sprintf(url, OSU_API_V1 "get_beatmaps?b=%d", bid);
+            sprintf(url, OSU_API_V1 "get_beatmaps?k=%s&b=%d",OSU_KEY, bid);
             std::string response;
             response = Sayobot::NetConnection::HttpsGet(url);
             json data = json::parse(response);
@@ -187,7 +188,7 @@ namespace osu_api {
         static void GetBeatmapset(int sid, std::vector<beatmap_info> &info) {
             info.clear();
             char url[512];
-            sprintf(url, OSU_API_V1 "get_beatmaps?s=%d", sid);
+            sprintf(url, OSU_API_V1 "get_beatmaps?k=%s&s=%d",OSU_KEY, sid);
             std::string response;
             response = Sayobot::NetConnection::HttpsGet(url);
             json data = json::parse(response);
@@ -275,7 +276,7 @@ namespace osu_api {
         static void GetUser(int uid, mode mode, user_info *info) {
             char url[512];
             sprintf(
-                url, OSU_API_V1 "get_user?u=%d&m=%d", uid, (int)mode);
+                url, OSU_API_V1 "get_user?k=%s&u=%d&m=%d", OSU_KEY, uid, (int)mode);
             std::string response;
             response = Sayobot::NetConnection::HttpsGet(url);
             json data = json::parse(response);
@@ -315,7 +316,8 @@ namespace osu_api {
         static void GetUser(const std::string &username, mode mode, user_info *info) {
             char url[512];
             sprintf(url,
-                    OSU_API_V1 "get_user?u=%s&m=%d",
+                    OSU_API_V1 "get_user?k=%s&u=%s&m=%d",
+                OSU_KEY,
                     username.c_str(),
                     (int)mode);
             std::string response;
@@ -363,7 +365,8 @@ namespace osu_api {
                                 std::vector<score_info> &info) {
             char url[512];
             sprintf(url,
-                    OSU_API_V1 "get_user_best?u=%d&m=%d&limit=%d",
+                    OSU_API_V1 "get_user_best?k=%s&u=%d&m=%d&limit=%d",
+                OSU_KEY,
                     uid,
                     (int)mode,
                     count);
@@ -400,7 +403,8 @@ namespace osu_api {
         static void GetUserRecent(int uid, mode mode, score_info *info) {
             char url[512];
             sprintf(url,
-                    OSU_API_V1 "get_user_recent?u=%d&m=%d",
+                    OSU_API_V1 "get_user_recent?k=%s&u=%d&m=%d",
+                OSU_KEY,
                     uid,
                     (int)mode);
             std::string response;
@@ -433,7 +437,8 @@ namespace osu_api {
                                   score_info *info) {
             char url[512];
             sprintf(url,
-                    OSU_API_V1 "get_user_recent?u=%s&m=%d",
+                    OSU_API_V1 "get_user_recent?k=%s&u=%s&m=%d",
+                OSU_KEY,
                     username.c_str(),
                     (int)mode);
             std::string response;

@@ -167,9 +167,8 @@ namespace Sayobot {
             std::string userid = data["userid"].get<std::string>();
             sprintf_s(buffer,
                       1024,
-                      "%sget_user?k=%s&u=%s&m=%d",
+                      "%sget_user?u=%s&m=%d",
                       OSU_API_V1,
-                      OSU_KEY,
                       userid.c_str(),
                       mode_num);
             std::string url = buffer;
@@ -1365,11 +1364,11 @@ namespace Sayobot {
 
         void groupSleep() {
             if (this->group != 0) {
-                int hours = 6;
+                double hours = 6;
                 if (this->args.size() != 0) {
                     std::string hours_str = this->args[0];
                     try {
-                        hours = std::stol(hours_str);
+                        hours = std::stod(hours_str);
                         if (hours > 10 || hours < 0) hours = 6;
                     } catch (...) {
                         hours = 6;
