@@ -3,16 +3,20 @@
 #define SAYOBOT_HTTP_HPP
 
 #include <Magick++.h>
+#ifdef WIN32
 #include <Windows.h>
 #include <schannel.h>
 #include <winhttp.h>
+#pragma comment(lib, "winhttp.lib")
+#else
+#define BYTE unsigned char
+#endif
 
 #include <iostream>
 #include <json.hpp>
 #include <sstream>
 #include <string>
 
-#pragma comment(lib, "winhttp.lib")
 
 #include "SayobotException.hpp"
 
@@ -25,6 +29,7 @@ namespace Sayobot
     public:
         static std::string HttpsGet(const std::string& url)
         {
+#ifdef WIN32
             std::string ret("");
 
             std::wstring wUrl = cq::utils::s2ws(url);
@@ -112,6 +117,7 @@ namespace Sayobot
             if (hRequest)
                 WinHttpCloseHandle(hRequest);
             return ret;
+#endif
         }
 
         static void DownloadPic(const std::string& url, const std::string& path)
@@ -230,7 +236,6 @@ namespace Sayobot
             if (hRequest)
                 WinHttpCloseHandle(hRequest);
             return ret;
-
 #endif
         }
     };

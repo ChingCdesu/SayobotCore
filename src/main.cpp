@@ -13,6 +13,12 @@
 
 #define SAYOBOT_VERSION "Sayobot v1.1.5"
 #define SAYOBOT_FOLDER "A:\\Sayobot\\CQ"
+#ifndef WIN32
+#define SetCurrentDirectory(msg) \
+    printf("Function \"SetCurrentDirectory\" is not avaliable in your operate system!\n")
+#define WinExec(cmd, option) \
+    printf("Function \"WinExec\" is not avaliable in your operate system!\n")
+#endif
 
 using namespace cq;
 using namespace std;

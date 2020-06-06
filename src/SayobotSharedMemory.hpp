@@ -58,12 +58,12 @@ namespace Sayobot
             }
         }
 #else
-        SharedMemory(const char *Path, int privileges)
+        SharedMemory(const char *Path, int privileges = 0600)
         {
             std::default_random_engine random;
             std::uniform_int_distribution<int> dist(0, 255);
-            id = dist(random);
-
+            int id = dist(random);
+            strcpy(this->path, Path);
             this->key = ftok(path, id);
             if (-1 == this->key)
                 throw SharedMemoryException("Unable to get key!", 10005);
@@ -71,7 +71,7 @@ namespace Sayobot
             if (-1 == this->shmid)
                 throw SharedMemoryException("Unable to get shmid!", 10005);
             this->lpMemory = shmat(this->shmid, NULL, 0);
-            if (-1 == this->lpMemory)
+            if ((void*)-1 == this->lpMemory)
                 throw SharedMemoryException("Unable to get space!", 10005);
         }
 
@@ -137,7 +137,7 @@ namespace Sayobot
         HANDLE hMap;
 #else
         key_t key;
-        const char path[512];
+        char path[512];
         int shmid;
 #endif
     };
@@ -185,7 +185,7 @@ namespace Sayobot
             {
                 this->boxes[group_index].user_id[this->boxes[group_index].nowIndex] =
                     user_id;
-                strcpy_s(this->boxes[group_index]
+                strcpy(this->boxes[group_index]
                              .Message[this->boxes[group_index].nowIndex],
                          msg);
                 ++this->boxes[group_index].nowIndex;

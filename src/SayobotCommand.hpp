@@ -2,6 +2,10 @@
 #ifndef SAYOBOT_COMMAND_HPP
 #define SAYOBOT_COMMAND_HPP
 
+#ifndef WIN32
+#define sprintf_s(buffer,length,format,...) sprintf(buffer,format,__VA_ARGS__)
+#endif
+
 #include <cqcppsdk/cqcppsdk.h>
 #include <math.h>
 #include <sys/stat.h>

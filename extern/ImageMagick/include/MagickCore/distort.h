@@ -52,8 +52,7 @@ typedef enum
   BarrelInverseDistortion,
   ShepardsDistortion,
   ResizeDistortion,
-  SentinelDistortion,
-  RigidAffineDistortion
+  SentinelDistortion
 } DistortMethod;
 
 typedef enum
