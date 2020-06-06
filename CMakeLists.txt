@@ -9,6 +9,9 @@ include_directories(extern/mysql/include)
 include_directories(extern/ImageMagick/include)
 include_directories(extern/nlohmann_json/include)
 
+link_directories(extern/mysql/lib)
+link_directories(extern/ImageMagick/lib)
+
 include(extern/cqcppsdk/cqcppsdk.cmake) # 包含 SDK 的 CMake 脚本, 必须
 file(GLOB_RECURSE SOURCE_FILES src/*.cpp) # 递归搜索 src 目录中的源文件, 可根据实际情况修改
 # file(GLOB_RECURSE SOURCE_FILES src/*.hpp)
@@ -17,23 +20,17 @@ cq_set_app_id(cn.sayobot.sayobotv2) # 设置 app id, 必须
 
 set(LIB_NAME "app") # 酷Q要求开发阶段的应用名为 app.dll
 
-if(MSVC AND (CMAKE_SIZEOF_VOID_P EQUAL 4)) # MSVC x86
+if (MSVC AND (CMAKE_SIZEOF_VOID_P EQUAL 4)) # MSVC x86
     cq_add_app(${LIB_NAME} ${SOURCE_FILES}) # 添加 std 模式的动态链接库构建目标
     cq_add_install_script(${LIB_NAME} "${PROJECT_SOURCE_DIR}/scripts/install.ps1") # 添加安装脚本(目前只支持 PowerShell 脚本, 建议脚本文件使用 UTF-16 LE 编码)
-    
     target_link_libraries(${LIB_NAME}
-    "A:\\Sayobot\\CoreDev\\SayobotCore\\extern\\mysql\\lib\\libmysql.lib"
-    "A:\\Sayobot\\CoreDev\\SayobotCore\\extern\\mysql\\lib\\mysqlclient.lib"
-    "A:\\Sayobot\\CoreDev\\SayobotCore\\extern\\ImageMagick\\lib\\CORE_RL_Magick++_.lib"
-    )
-endif()
+            libmysql mysqlclient CORE_RL_Magick++_
+            )
+endif ()
 
 # 添加 dev 模式的可执行文件构建目标
 set(CQCPPSDK_DEV_MODE ON)
 cq_add_app(${LIB_NAME}_dev ${SOURCE_FILES})
-
 target_link_libraries(${LIB_NAME}_dev
-    "A:\\Sayobot\\CoreDev\\SayobotCore\\extern\\mysql\\lib\\libmysql.lib"
-    "A:\\Sayobot\\CoreDev\\SayobotCore\\extern\\mysql\\lib\\mysqlclient.lib"
-    "A:\\Sayobot\\CoreDev\\SayobotCore\\extern\\ImageMagick\\lib\\CORE_RL_Magick++_.lib"
-)
+        libmysql mysqlclient CORE_RL_Magick++_
+        )
