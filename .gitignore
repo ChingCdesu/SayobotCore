@@ -9,3 +9,4 @@ out
 cmake-build-*
 tmp
 scripts/install.ps1
+*.lib
