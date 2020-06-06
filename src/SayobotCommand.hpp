@@ -3,7 +3,7 @@
 #define SAYOBOT_COMMAND_HPP
 
 #ifndef WIN32
-#define sprintf_s(buffer,length,format,...) sprintf(buffer,format,__VA_ARGS__)
+#define sprintf_s(buffer, length, format, ...) sprintf(buffer, format, __VA_ARGS__)
 #endif
 
 #include <cqcppsdk/cqcppsdk.h>
@@ -169,14 +169,8 @@ namespace Sayobot {
             }
 
             std::string userid = data["userid"].get<std::string>();
-            sprintf_s(buffer,
-                      1024,
-                      "%sget_user?u=%s&m=%d",
-                      OSU_API_V1,
-                      userid.c_str(),
-                      mode_num);
-            std::string url = buffer;
-            data = json::parse(Sayobot::NetConnection::HttpsGet(url))[0];
+            osu_api::user_info ui;
+            osu_api::api_v1::GetUser(userid, (osu_api::mode)mode_num, &ui);
 
             data["TotalHits"] =
                 std::to_string(std::stoll(data["count300"].get<std::string>())
@@ -185,26 +179,25 @@ namespace Sayobot {
 
             sprintf_s(buffer,
                       1024,
-                      "insert into userstats values (%s,\'%s\',%s,%s,%s,%s"
-                      ",%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,\'%c\',now())",
-                      data["user_id"].get<std::string>().c_str(),
-                      data["country"].get<std::string>().c_str(),
-                      data["TotalHits"].get<std::string>().c_str(),
-                      data["total_score"].get<std::string>().c_str(),
-                      data["ranked_score"].get<std::string>().c_str(),
-                      data["accuracy"].get<std::string>().c_str(),
-                      data["pp_raw"].get<std::string>().c_str(),
-                      data["pp_rank"].get<std::string>().c_str(),
-                      data["pp_country_rank"].get<std::string>().c_str(),
-                      data["count_rank_ssh"].get<std::string>().c_str(),
-                      data["count_rank_ss"].get<std::string>().c_str(),
-                      data["count_rank_sh"].get<std::string>().c_str(),
-                      data["count_rank_s"].get<std::string>().c_str(),
-                      data["count_rank_a"].get<std::string>().c_str(),
-                      data["playcount"].get<std::string>().c_str(),
-                      data["level"].get<std::string>().c_str(),
+                      "insert into userstats values (%d,\'%s\',%lld,%lld,%lld,%lf"
+                      ",%f,%d,%d,%d,%d,%d,%d,%d,%d,%f,\'%c\',now())",
+                      ui.user_id,
+                      ui.country.c_str(),
+                      ui.total_hits,
+                      ui.total_score,
+                      ui.ranked_score,
+                      ui.accuracy,
+                      ui.pp,
+                      ui.global_rank,
+                      ui.country_rank,
+                      ui.count_ssh,
+                      ui.count_ss,
+                      ui.count_sh,
+                      ui.count_s,
+                      ui.count_a,
+                      ui.playcount,
+                      ui.level,
                       mode_str[mode_num]);
-
             db.Insert(buffer);
             this->result = "更新完成";
             db.Close();
@@ -717,7 +710,7 @@ namespace Sayobot {
             } else {
                 sprintf_s(stemp,
                           512,
-                          "#%d(%s%d)",
+                          "#%d(%s%lld)",
                           data.uinfo.country_rank,
                           itemp > 0 ? "↓" : "↑",
                           itemp < 0 ? -itemp : itemp);
@@ -823,7 +816,7 @@ namespace Sayobot {
                 itemp = data.uinfo.count_ssh + data.uinfo.count_ss - data.stat.xh
                         - data.stat.x;
                 sprintf(stemp,
-                        "(%s%d)",
+                        "(%s%lld)",
                         itemp < 0 ? "↓" : "↑",
                         itemp < 0 ? 0 - itemp : itemp);
                 image.Drawtext(stemp, ts, 253, 860);
@@ -831,14 +824,14 @@ namespace Sayobot {
                 itemp = data.uinfo.count_sh + data.uinfo.count_s - data.stat.sh
                         - data.stat.s;
                 sprintf(stemp,
-                        "(%s%d)",
+                        "(%s%lld)",
                         itemp < 0 ? "↓" : "↑",
                         itemp < 0 ? 0 - itemp : itemp);
                 image.Drawtext(stemp, ts, 494, 860);
 
                 itemp = data.uinfo.count_a - data.stat.a;
                 sprintf(stemp,
-                        "(%s%d)",
+                        "(%s%lld)",
                         itemp < 0 ? "↓" : "↑",
                         itemp < 0 ? 0 - itemp : itemp);
                 image.Drawtext(stemp, ts, 735, 860);
@@ -862,7 +855,7 @@ namespace Sayobot {
             if (data.stat.user_id != -1) {
                 itemp = data.uinfo.global_rank - data.stat.global_rank;
                 sprintf(stemp,
-                        "(%s%d)",
+                        "(%s%lld)",
                         itemp > 0 ? "↓" : "↑",
                         itemp < 0 ? -itemp : itemp);
                 ts.color = itemp > 0 ? data.config.color.arrowdown
@@ -1055,7 +1048,7 @@ namespace Sayobot {
                 temp, 512, "https://a.ppy.sh/%d?%d.png", config.user_id, dist(random));
             std::string path = AVATAR_PATH + std::to_string(config.user_id) + ".png";
             try {
-                Sayobot::NetConnection::DownloadPic(temp, path);
+                Sayobot::NetConnection::Download(temp, path);
                 this->result =
                     "更新头像完成，如果阁下的头像还是没有更新，等一会再试试吧";
             } catch (Magick::Exception) {
@@ -1105,11 +1098,11 @@ namespace Sayobot {
                         else
                             this->result =
                                 "小夜觉得不" + this->args[0].substr(pos + 3);
-                    } else if (this->args[0][1] == '~'
-                               && this->args[0].length() >= 3
+                    } else if (this->args[0][1] == '~' && this->args[0].length() >= 3
                                && args[0][0] < args[0][2]) {
                         char buf[4];
-                        std::uniform_int_distribution<short> dist(args[0][0],args[0][2]);
+                        std::uniform_int_distribution<short> dist(args[0][0],
+                                                                  args[0][2]);
                         buf[0] = dist(random);
                         buf[1] = 0;
                         this->result = buf;
@@ -1263,8 +1256,15 @@ namespace Sayobot {
             // sprintf_s(
             //    buffer, 1024, "给阁下推荐的难度：%.2lf~%.2lf", min_diff, max_diff);
             // this->result = buffer;
-            json receive_data =
-                json::parse(NetConnection::HttpsPost(SAYO_API, post_data));
+            std::string response;
+            long status_code =
+                Sayobot::NetConnection::Post(SAYO_API, response, post_data);
+            if (status_code != 200) {
+                char msg[1024];
+                sprintf(msg, "%s\nStatus Code: %ld", SAYO_API, status_code);
+                throw Sayobot::NetException(msg, status_code);
+            }
+            json receive_data = json::parse(response);
             std::random_device rd;
             std::default_random_engine random(rd());
             json beatmaplist = receive_data["data"];

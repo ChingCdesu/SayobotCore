@@ -2,245 +2,119 @@
 #ifndef SAYOBOT_HTTP_HPP
 #define SAYOBOT_HTTP_HPP
 
-#include <Magick++.h>
-#ifdef WIN32
-#include <Windows.h>
-#include <schannel.h>
-#include <winhttp.h>
-#pragma comment(lib, "winhttp.lib")
-#else
-#define BYTE unsigned char
-#endif
-
 #include <curl/curl.h>
 
-#include <iostream>
 #include <json.hpp>
 #include <sstream>
 #include <string>
-
 
 #include "SayobotException.hpp"
 
 using namespace nlohmann;
 
-namespace Sayobot
-{
-    class NetConnection
-    {
+namespace Sayobot {
+    size_t write_data(void *buffer, size_t size, size_t nmemb, void *userp) {
+        std::string data((char *)buffer, size * nmemb);
+        *((std::stringstream *)userp) << data;
+        return size * nmemb;
+    }
+
+    size_t download(void *buffer, size_t size, size_t nmemb, void *userp) {
+        char *data = (char *)buffer;
+        ((std::ofstream *)userp)->write(data, size * nmemb);
+        return size * nmemb;
+    }
+
+    class NetConnection {
     public:
-        static std::string HttpsGet(const std::string& url)
-        {
-#ifdef __WIN32
-            std::string ret("");
-
-            std::wstring wUrl = cq::utils::s2ws(url);
-            URL_COMPONENTS urlComp;
-            ZeroMemory(&urlComp, sizeof(urlComp));
-            urlComp.dwStructSize = sizeof(urlComp);
-
-            urlComp.dwSchemeLength = (DWORD)-1;
-            urlComp.dwHostNameLength = (DWORD)-1;
-            urlComp.dwUrlPathLength = (DWORD)-1;
-            urlComp.dwExtraInfoLength = (DWORD)-1;
-
-            if (!WinHttpCrackUrl(wUrl.c_str(), (DWORD)wUrl.size(), 0, &urlComp))
-                throw NetException("[Network] Error in WinHttpCrackUrl",
-                                   GetLastError());
-
-            DWORD dwSize = 0;
-            DWORD dwDownloaded = 0;
-            bool bResults = false;
-            HINTERNET hSession = NULL, hConnect = NULL, hRequest = NULL;
-            hSession = WinHttpOpen(L"Sayobot with WinHttp API",
-                                   WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
-                                   WINHTTP_NO_PROXY_NAME,
-                                   WINHTTP_NO_PROXY_BYPASS,
-                                   0);
-            if (hSession)
-            {
-                std::wstring hostname(urlComp.lpszHostName);
-                hostname = hostname.substr(0, hostname.find_first_of(L'/'));
-                hostname = hostname.substr(0, hostname.find_first_of(L':'));
-                hConnect =
-                    WinHttpConnect(hSession, hostname.c_str(), urlComp.nPort, 0);
+        static long Get(const std::string &url, std::string &response,
+                        json headers = json::value_t::null) {
+            CURL *curl = curl_easy_init();
+            long status_code;
+            std::stringstream ss;
+            curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+            if (!headers.is_null() && headers.is_object()) {
+                curl_slist *curlHeaders = NULL;
+                for (auto item : headers.items()) {
+                    std::stringstream headerss;
+                    headerss << item.key() << ":" << item.value();
+                    curlHeaders =
+                        curl_slist_append(curlHeaders, headerss.str().c_str());
+                }
+                curl_easy_setopt(curl, CURLOPT_HTTPHEADER, curlHeaders);
             }
-
-            if (hConnect)
-            {
-                hRequest = WinHttpOpenRequest(hConnect,
-                                              L"GET",
-                                              urlComp.lpszUrlPath,
-                                              NULL,
-                                              WINHTTP_NO_REFERER,
-                                              WINHTTP_DEFAULT_ACCEPT_TYPES,
-                                              WINHTTP_FLAG_SECURE);
-            }
-            if (hRequest)
-            {
-                bResults = WinHttpSendRequest(hRequest,
-                                              WINHTTP_NO_ADDITIONAL_HEADERS,
-                                              0,
-                                              WINHTTP_NO_REQUEST_DATA,
-                                              0,
-                                              0,
-                                              0);
-            }
-            if (bResults)
-                bResults = WinHttpReceiveResponse(hRequest, NULL);
-            if (bResults)
-            {
-                do
-                {
-                    LPSTR inBuf;
-                    dwSize = 0;
-                    if (!WinHttpQueryDataAvailable(hRequest, &dwSize))
-                        throw NetException(
-                            "[Network] Error in WinHttpQueryDataAvailable",
-                            GetLastError());
-                    inBuf = new char[dwSize + 1];
-                    if (!inBuf)
-                        throw NetException("[Network] Out of Memory!", 1001);
-                    ZeroMemory(inBuf, dwSize + 1);
-                    if (!WinHttpReadData(
-                            hRequest, (LPVOID)inBuf, dwSize, &dwDownloaded))
-                        throw NetException("[Network] Error in WinHttpReadData!",
-                                           GetLastError());
-                    ret += inBuf;
-                } while (dwSize > 0);
-            }
-            if (!bResults)
-                throw NetException("[Network] Error has occurred!", GetLastError());
-
-            if (hSession)
-                WinHttpCloseHandle(hSession);
-            if (hConnect)
-                WinHttpCloseHandle(hConnect);
-            if (hRequest)
-                WinHttpCloseHandle(hRequest);
-            return ret;
-#endif
-
+            curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &write_data);
+            curl_easy_setopt(curl, CURLOPT_WRITEDATA, &ss);
+            curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1);
+            status_code = curl_easy_perform(curl);
+            if (status_code == CURLM_OK)
+                curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &status_code);
+            curl_easy_cleanup(curl);
+            response.clear();
+            response = ss.str();
+            return status_code;
         }
 
-        static void DownloadPic(const std::string& url, const std::string& path)
-        {
-            auto image = Magick::Image(url);
-            image.quality(100);
-            image.write(path);
+        static long Post(const std::string &url, std::string &response,
+                         json headers = json::value_t::null,
+                         json datas = json::value_t::null) {
+            CURL *curl = curl_easy_init();
+            long status_code;
+            std::stringstream ss;
+            curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+            curl_easy_setopt(curl, CURLOPT_POST, 1);
+            if (!datas.is_null()) {
+                curl_easy_setopt(curl, CURLOPT_POSTFIELDS, datas.dump().c_str());
+            }
+            if (!headers.is_null() && headers.is_object()) {
+                curl_slist *curlHeaders = NULL;
+                for (auto item : headers.items()) {
+                    std::stringstream headerss;
+                    headerss << item.key() << ":" << item.value();
+                    curlHeaders =
+                        curl_slist_append(curlHeaders, headerss.str().c_str());
+                }
+                curl_easy_setopt(curl, CURLOPT_HTTPHEADER, curlHeaders);
+            }
+            curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &write_data);
+            curl_easy_setopt(curl, CURLOPT_WRITEDATA, &ss);
+            curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1);
+            status_code = curl_easy_perform(curl);
+            if (status_code == CURLM_OK)
+                curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &status_code);
+            curl_easy_cleanup(curl);
+            response.clear();
+            response = ss.str();
+            return status_code;
         }
 
-        static void DownloadFile(const std::string& url, const std::string& path)
-        {
-            std::string data_str = HttpsGet(url);
-            BYTE* data = (BYTE*)data_str.c_str();
-
-            std::ofstream file(path, std::ios::binary | std::ios::out);
-            file << data;
+        static long Download(const std::string &url, const std::string &filename,
+                             json headers = json::value_t::null) {
+            CURL *curl = curl_easy_init();
+            long status_code;
+            std::ofstream file(filename, std::ios::out | std::ios::binary);
+            curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+            if (!headers.is_null() && headers.is_object()) {
+                curl_slist *curlHeaders = NULL;
+                for (auto item : headers.items()) {
+                    std::stringstream headerss;
+                    headerss << item.key() << ":" << item.value();
+                    curlHeaders =
+                        curl_slist_append(curlHeaders, headerss.str().c_str());
+                }
+                curl_easy_setopt(curl, CURLOPT_HTTPHEADER, curlHeaders);
+            }
+            curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &download);
+            curl_easy_setopt(curl, CURLOPT_WRITEDATA, &file);
+            curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1);
+            status_code = curl_easy_perform(curl);
+            if (status_code == CURLM_OK)
+                curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &status_code);
             file.close();
-            delete[] data;
-        }
-
-        static std::string HttpsPost(const std::string& url, const json& Data)
-        {
-#ifdef WIN32
-            std::string ret("");
-
-            std::string data_str = Data.dump();
-            std::wstring wUrl = cq::utils::s2ws(url);
-            URL_COMPONENTS urlComp;
-            ZeroMemory(&urlComp, sizeof(urlComp));
-            urlComp.dwStructSize = sizeof(urlComp);
-
-            urlComp.dwSchemeLength = (DWORD)-1;
-            urlComp.dwHostNameLength = (DWORD)-1;
-            urlComp.dwUrlPathLength = (DWORD)-1;
-            urlComp.dwExtraInfoLength = (DWORD)-1;
-
-            if (!WinHttpCrackUrl(wUrl.c_str(), (DWORD)wUrl.size(), 0, &urlComp))
-                throw NetException("[Network] Error in WinHttpCrackUrl",
-                                     GetLastError());
-
-            DWORD dwSize = 0;
-            DWORD dwDownloaded = 0;
-            bool bResults = false;
-            HINTERNET hSession = NULL, hConnect = NULL, hRequest = NULL;
-            hSession = WinHttpOpen(L"Sayobot with WinHttp API",
-                                   WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
-                                   WINHTTP_NO_PROXY_NAME,
-                                   WINHTTP_NO_PROXY_BYPASS,
-                                   0);
-            if (hSession)
-            {
-                std::wstring hostname(urlComp.lpszHostName);
-                hostname = hostname.substr(0, hostname.find_first_of(L'/'));
-                hostname = hostname.substr(0, hostname.find_first_of(L':'));
-                hConnect =
-                    WinHttpConnect(hSession, hostname.c_str(), urlComp.nPort, 0);
-            }
-
-            if (hConnect)
-            {
-                hRequest = WinHttpOpenRequest(hConnect,
-                                              L"POST",
-                                              urlComp.lpszUrlPath,
-                                              L"HTTPS/1.1",
-                                              WINHTTP_NO_REFERER,
-                                              WINHTTP_DEFAULT_ACCEPT_TYPES,
-                                              WINHTTP_FLAG_SECURE);
-            }
-
-            if (hRequest)
-            {
-                WinHttpAddRequestHeaders(
-                    hRequest,
-                    L"Content-Type: application/json;charset=utf-8",
-                    -1L,
-                    WINHTTP_ADDREQ_FLAG_ADD | WINHTTP_ADDREQ_FLAG_REPLACE);
-                bResults = WinHttpSendRequest(hRequest,
-                                              WINHTTP_NO_ADDITIONAL_HEADERS,
-                                              0,
-                                              (LPVOID)data_str.c_str(),
-                                              data_str.length(),
-                                              data_str.length(),
-                                              0);
-            }
-
-            if (bResults)
-                bResults = WinHttpReceiveResponse(hRequest, NULL);
-            if (bResults)
-            {
-                do
-                {
-                    LPSTR inBuf;
-                    dwSize = 0;
-                    if (!WinHttpQueryDataAvailable(hRequest, &dwSize))
-                        throw NetException(
-                            "[Network] Error in WinHttpQueryDataAvailable",
-                            GetLastError());
-                    inBuf = new char[dwSize + 1];
-                    if (!inBuf)
-                        throw NetException("[Network] Out of Memory!", 1001);
-                    ZeroMemory(inBuf, dwSize + 1);
-                    if (!WinHttpReadData(
-                            hRequest, (LPVOID)inBuf, dwSize, &dwDownloaded))
-                        throw NetException("[Network] Error in WinHttpReadData!",
-                                             GetLastError());
-                    ret += inBuf;
-                } while (dwSize > 0);
-            }
-            if (!bResults)
-                throw NetException("[Network] Error has occurred!", GetLastError());
-
-            if (hSession)
-                WinHttpCloseHandle(hSession);
-            if (hConnect)
-                WinHttpCloseHandle(hConnect);
-            if (hRequest)
-                WinHttpCloseHandle(hRequest);
-            return ret;
-#endif
+            curl_easy_cleanup(curl);
+            return status_code;
         }
     };
+
 } // namespace Sayobot
 #endif

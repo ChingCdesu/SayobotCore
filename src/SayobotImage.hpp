@@ -2,8 +2,10 @@
 #ifndef SAYOBOT_IMAGE_HPP
 #define SAYOBOT_IMAGE_HPP
 
-#define IM_PATH "C:\\Program Files (x86)\\ImageMagick-7.0.9-Q16-HDRI"
-
+#ifndef WIN32
+#define MAGICKCORE_QUANTUM_DEPTH 16
+#define MAGICKCORE_HDRI_ENABLE TRUE
+#endif
 #include <Magick++.h>
 #include <random>
 

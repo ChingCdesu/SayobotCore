@@ -74,6 +74,7 @@ namespace osu_api {
         int n300, n100, n50;
         int playcount;
         int64_t total_score, ranked_score;
+        int64_t total_hits;
         float pp;
         int country_rank, global_rank;
         int count_ssh, count_ss, count_sh, count_s, count_a;
@@ -103,12 +104,18 @@ namespace osu_api {
     public:
         static void GetBeatmap(int bid, beatmap_info *info) {
             char url[512];
-            sprintf(url, OSU_API_V1 "get_beatmaps?k=%s&b=%d",OSU_KEY, bid);
+            sprintf(url, OSU_API_V1 "get_beatmaps?k=%s&b=%d", OSU_KEY, bid);
             std::string response;
-            response = Sayobot::NetConnection::HttpsGet(url);
+            long status_code = Sayobot::NetConnection::Get(url, response);
+            if (status_code != 200) {
+                char msg[1024];
+                sprintf(msg, "%s\nStatus Code: %ld", url, status_code);
+                throw Sayobot::NetException(msg, status_code);
+            }
             json data = json::parse(response);
             if (data.size() == 0) {
-                throw Sayobot::BaseException("阁下，小夜找不到这个人呢", Sayobot::USER_BANNED);
+                throw Sayobot::BaseException("阁下，小夜找不到这个人呢",
+                                             Sayobot::USER_BANNED);
             }
             data = data[0];
             info->approved =
@@ -188,9 +195,14 @@ namespace osu_api {
         static void GetBeatmapset(int sid, std::vector<beatmap_info> &info) {
             info.clear();
             char url[512];
-            sprintf(url, OSU_API_V1 "get_beatmaps?k=%s&s=%d",OSU_KEY, sid);
+            sprintf(url, OSU_API_V1 "get_beatmaps?k=%s&s=%d", OSU_KEY, sid);
             std::string response;
-            response = Sayobot::NetConnection::HttpsGet(url);
+            long status_code = Sayobot::NetConnection::Get(url, response);
+            if (status_code != 200) {
+                char msg[1024];
+                sprintf(msg, "%s\nStatus Code: %ld", url, status_code);
+                throw Sayobot::NetException(msg, status_code);
+            }
             json data = json::parse(response);
             std::cout << data.dump(2) << std::endl;
             for (auto it : data) {
@@ -278,10 +290,16 @@ namespace osu_api {
             sprintf(
                 url, OSU_API_V1 "get_user?k=%s&u=%d&m=%d", OSU_KEY, uid, (int)mode);
             std::string response;
-            response = Sayobot::NetConnection::HttpsGet(url);
+            long status_code = Sayobot::NetConnection::Get(url, response);
+            if (status_code != 200) {
+                char msg[1024];
+                sprintf(msg, "%s\nStatus Code: %ld", url, status_code);
+                throw Sayobot::NetException(msg, status_code);
+            }
             json data = json::parse(response);
             if (data.size() == 0) {
-                throw Sayobot::BaseException("阁下，小夜找不到这个人呢", Sayobot::USER_BANNED);
+                throw Sayobot::BaseException("阁下，小夜找不到这个人呢",
+                                             Sayobot::USER_BANNED);
             }
             data = data[0];
             tm time_temp;
@@ -311,20 +329,30 @@ namespace osu_api {
             info->playtime =
                 std::stoi(data["total_seconds_played"].get<std::string>());
             info->country_rank = std::stoi(data["pp_country_rank"].get<std::string>());
+            info->total_hits = std::stoll(data["count300"].get<std::string>())
+                               + std::stoll(data["count100"].get<std::string>())
+                               + std::stoll(data["count50"].get<std::string>());
+
         }
 
         static void GetUser(const std::string &username, mode mode, user_info *info) {
             char url[512];
             sprintf(url,
                     OSU_API_V1 "get_user?k=%s&u=%s&m=%d",
-                OSU_KEY,
+                    OSU_KEY,
                     username.c_str(),
                     (int)mode);
             std::string response;
-            response = Sayobot::NetConnection::HttpsGet(url);
+            long status_code = Sayobot::NetConnection::Get(url, response);
+            if (status_code != 200) {
+                char msg[1024];
+                sprintf(msg, "%s\nStatus Code: %ld", url, status_code);
+                throw Sayobot::NetException(msg, status_code);
+            }
             json data = json::parse(response);
             if (data.size() == 0) {
-                throw Sayobot::BaseException("阁下，小夜找不到这个人呢", Sayobot::USER_BANNED);
+                throw Sayobot::BaseException("阁下，小夜找不到这个人呢",
+                                             Sayobot::USER_BANNED);
             }
             data = data[0];
             for (auto it = data.begin(); it != data.end(); ++it) {
@@ -359,6 +387,9 @@ namespace osu_api {
             info->playtime =
                 std::stoi(data["total_seconds_played"].get<std::string>());
             info->country_rank = std::stoi(data["pp_country_rank"].get<std::string>());
+            info->total_hits = std::stoll(data["count300"].get<std::string>())
+                               + std::stoll(data["count100"].get<std::string>())
+                               + std::stoll(data["count50"].get<std::string>());
         }
 
         static void GetUserBest(int uid, int count, mode mode,
@@ -366,15 +397,21 @@ namespace osu_api {
             char url[512];
             sprintf(url,
                     OSU_API_V1 "get_user_best?k=%s&u=%d&m=%d&limit=%d",
-                OSU_KEY,
+                    OSU_KEY,
                     uid,
                     (int)mode,
                     count);
             std::string response;
-            response = Sayobot::NetConnection::HttpsGet(url);
+            long status_code = Sayobot::NetConnection::Get(url, response);
+            if (status_code != 200) {
+                char msg[1024];
+                sprintf(msg, "%s\nStatus Code: %ld", url, status_code);
+                throw Sayobot::NetException(msg, status_code);
+            }
             json data = json::parse(response);
             if (data.size() == 0) {
-                throw Sayobot::BaseException("阁下，小夜找不到这个人呢", Sayobot::USER_BANNED);
+                throw Sayobot::BaseException("阁下，小夜找不到这个人呢",
+                                             Sayobot::USER_BANNED);
             }
             info.clear();
             for (auto it : data) {
@@ -404,14 +441,20 @@ namespace osu_api {
             char url[512];
             sprintf(url,
                     OSU_API_V1 "get_user_recent?k=%s&u=%d&m=%d",
-                OSU_KEY,
+                    OSU_KEY,
                     uid,
                     (int)mode);
             std::string response;
-            response = Sayobot::NetConnection::HttpsGet(url);
+            long status_code = Sayobot::NetConnection::Get(url, response);
+            if (status_code != 200) {
+                char msg[1024];
+                sprintf(msg, "%s\nStatus Code: %ld", url, status_code);
+                throw Sayobot::NetException(msg, status_code);
+            }
             json data = json::parse(response);
             if (data.size() == 0) {
-                throw Sayobot::BaseException("阁下，小夜找不到这个人呢", Sayobot::USER_BANNED);
+                throw Sayobot::BaseException("阁下，小夜找不到这个人呢",
+                                             Sayobot::USER_BANNED);
             }
             data = data[0];
             info->beatmap_id = std::stoi(data["beatmap_id"].get<std::string>());
@@ -438,14 +481,20 @@ namespace osu_api {
             char url[512];
             sprintf(url,
                     OSU_API_V1 "get_user_recent?k=%s&u=%s&m=%d",
-                OSU_KEY,
+                    OSU_KEY,
                     username.c_str(),
                     (int)mode);
             std::string response;
-            response = Sayobot::NetConnection::HttpsGet(url);
+            long status_code = Sayobot::NetConnection::Get(url, response);
+            if (status_code != 200) {
+                char msg[1024];
+                sprintf(msg, "%s\nStatus Code: %ld", url, status_code);
+                throw Sayobot::NetException(msg, status_code);
+            }
             json data = json::parse(response);
             if (data.size() == 0) {
-                throw Sayobot::BaseException("阁下，小夜找不到这个人呢", Sayobot::USER_BANNED);
+                throw Sayobot::BaseException("阁下，小夜找不到这个人呢",
+                                             Sayobot::USER_BANNED);
             }
             data = data[0];
             info->beatmap_id = std::stoi(data["beatmap_id"].get<std::string>());
