@@ -1432,7 +1432,7 @@ namespace Sayobot {
             struct stat buffer;
             return (stat(path.c_str(), &buffer) == 0);
         }
-    }; // namespace Sayobot
+    };
 
     const std::set<int64_t> Command::sudoers = {SAYOKO, DEBUGGER, COLA};
     const std::vector<std::string> Command::Commands = {"o",

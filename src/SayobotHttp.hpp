@@ -3,7 +3,6 @@
 #define SAYOBOT_HTTP_HPP
 
 #include <curl/curl.h>
-
 #include <json.hpp>
 #include <sstream>
 #include <string>

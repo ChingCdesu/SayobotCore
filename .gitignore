@@ -12,3 +12,4 @@ scripts/install.ps1
 *.lib
 *.a
 *.dylib
+data

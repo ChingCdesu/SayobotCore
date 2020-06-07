@@ -13,11 +13,21 @@
 #endif
 #include "osu_api.hpp"
 
+#ifdef _CQ_STD_MODE
 #define SQL_USER "sayobot"
 #define SQL_HOST "localhost"
 #define SQL_PWD "Sayobot233*233"
 #define SQL_DATABASE "sayobotuserinfo"
 #define SQL_PORT 32145
+#endif
+
+#ifdef _CQ_DEV_MODE
+#define SQL_USER "chingc"
+#define SQL_HOST "sayo.sayobot.cn"
+#define SQL_PWD "Lyy19990123"
+#define SQL_DATABASE "sayobotuserinfo_devtest"
+#define SQL_PORT 32145
+#endif
 
 using json = nlohmann::json;
 
