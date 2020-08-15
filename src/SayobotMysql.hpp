@@ -70,20 +70,10 @@ namespace Sayobot {
     };
 
     class Database {
-    public:
-        /*
-         * 数据库对象
-         */
+    private:
         Database() {
-            mysql_init(&this->conn);
-        }
-
-        /*
-         * 连接到数据库
-         * 在使用完毕后必须调用Close()函数
-         */
-        void Connect() {
-            if (mysql_real_connect(&this->conn,
+            mysql_init(&stMysql);
+            if (mysql_real_connect(&stMysql,
                                    SQL_HOST,
                                    SQL_USER,
                                    SQL_PWD,
@@ -92,23 +82,31 @@ namespace Sayobot {
                                    NULL,
                                    0)
                 == NULL) {
-                throw SqlException(mysql_error(&this->conn), mysql_errno(&this->conn));
+                throw SqlException(mysql_error(&stMysql), mysql_errno(&stMysql));
             }
-            if (int t = mysql_set_character_set(&conn, "utf8") != NULL) {
-                mysql_close(&this->conn);
-                throw SqlException(mysql_error(&this->conn), t);
+            if (int t = mysql_set_character_set(&stMysql, "utf8") != NULL) {
+                mysql_close(&stMysql);
+                throw SqlException(mysql_error(&stMysql), t);
             }
+        }
+
+    public:
+        static Database* GetInstance() {
+            if (_conn == nullptr) _conn = new Database();
+            return _conn;
         }
 
         void Execute(const std::string& sql) {
-            if (0 != mysql_query(&this->conn, sql.c_str())) {
-                throw QueryException(
-                    sql, mysql_error(&this->conn), mysql_errno(&this->conn));
+            if (0 != mysql_query(&stMysql, sql.c_str())) {
+                throw QueryException(sql, mysql_error(&stMysql), mysql_errno(&stMysql));
             }
+            mysql_commit(&stMysql);
         }
 
-        void Commit() {
-            mysql_commit(&this->conn);
+        void Dispose() {
+            mysql_close(&stMysql);
+            delete _conn;
+            _conn = nullptr;
         }
 
 #pragma region SqlNative
@@ -126,11 +124,11 @@ namespace Sayobot {
                 throw QueryException(
                     updateSql, "This Query is not an Update Query!", 1047);
             }
-            if (0 != mysql_query(&this->conn, updateSql.c_str())) {
+            if (0 != mysql_query(&stMysql, updateSql.c_str())) {
                 throw QueryException(
-                    updateSql, mysql_error(&this->conn), mysql_errno(&this->conn));
+                    updateSql, mysql_error(&stMysql), mysql_errno(&stMysql));
             }
-            mysql_commit(&this->conn);
+            mysql_commit(&stMysql);
         }
 
         /*
@@ -147,11 +145,11 @@ namespace Sayobot {
                 throw QueryException(
                     insertSql, "This Query is not an Insert Query!", 1047);
             }
-            if (0 != mysql_query(&this->conn, insertSql.c_str())) {
+            if (0 != mysql_query(&stMysql, insertSql.c_str())) {
                 throw QueryException(
-                    insertSql, mysql_error(&this->conn), mysql_errno(&this->conn));
+                    insertSql, mysql_error(&stMysql), mysql_errno(&stMysql));
             }
-            mysql_commit(&this->conn);
+            mysql_commit(&stMysql);
         }
 
         /*
@@ -168,11 +166,11 @@ namespace Sayobot {
                 throw QueryException(
                     deleteSql, "This Query is not an Delete Query!", 1047);
             }
-            if (0 != mysql_query(&this->conn, deleteSql.c_str())) {
+            if (0 != mysql_query(&stMysql, deleteSql.c_str())) {
                 throw QueryException(
-                    deleteSql, mysql_error(&this->conn), mysql_errno(&this->conn));
+                    deleteSql, mysql_error(&stMysql), mysql_errno(&stMysql));
             }
-            mysql_commit(&this->conn);
+            mysql_commit(&stMysql);
         }
 
         /*
@@ -196,8 +194,8 @@ namespace Sayobot {
             MYSQL_RES* result;
             MYSQL_ROW row;
             json ret = json::array();
-            if (mysql_query(&this->conn, selectSql.c_str()) == 0) {
-                result = mysql_store_result(&this->conn);
+            if (mysql_query(&stMysql, selectSql.c_str()) == 0) {
+                result = mysql_store_result(&stMysql);
                 if (NULL != result) {
                     unsigned int cFields = mysql_num_fields(result);
                     MYSQL_FIELD* field;
@@ -217,8 +215,7 @@ namespace Sayobot {
                         ret.push_back(aResult);
                     }
                 } else {
-                    throw SqlException(mysql_error(&this->conn),
-                                       mysql_errno(&this->conn));
+                    throw SqlException(mysql_error(&stMysql), mysql_errno(&stMysql));
                 }
                 mysql_free_result(result);
                 if (0 == ret.size()) {
@@ -227,7 +224,7 @@ namespace Sayobot {
                 return ret;
             } else {
                 throw QueryException(
-                    selectSql, mysql_error(&this->conn), mysql_errno(&this->conn));
+                    selectSql, mysql_error(&stMysql), mysql_errno(&stMysql));
             }
         }
 #pragma endregion
@@ -455,15 +452,16 @@ namespace Sayobot {
                 return GetUserLatestedStatus(Username, mode, data);
             }
             char buffer[512];
-            sprintf_s(buffer,
-                      512,
-                      "select * from UserStats_withinfo where UserID in (select UserID from "
-                      "UserConfig where "
-                      "nick=\"%s\") and to_days(now())-"
-                      "to_days(LastUpdate)=%d and mode=\'%c\'",
-                      Username.c_str(),
-                      days_ago,
-                      mode);
+            sprintf_s(
+                buffer,
+                512,
+                "select * from UserStats_withinfo where UserID in (select UserID from "
+                "UserConfig where "
+                "nick=\"%s\") and to_days(now())-"
+                "to_days(LastUpdate)=%d and mode=\'%c\'",
+                Username.c_str(),
+                days_ago,
+                mode);
             json p;
             try {
                 p = Select(buffer)[0];
@@ -518,15 +516,16 @@ namespace Sayobot {
                 return GetUserLatestedStatus(qq, mode, data);
             }
             char buffer[512];
-            sprintf_s(buffer,
-                      512,
-                      "select * from UserStats_withinfo where UserID in (select UserID from "
-                      "UserConfig "
-                      "where QQ=%lld) and to_days(now()) - "
-                      "to_days(LastUpdate)=%d and mode=\'%c\'",
-                      qq,
-                      days_ago,
-                      mode);
+            sprintf_s(
+                buffer,
+                512,
+                "select * from UserStats_withinfo where UserID in (select UserID from "
+                "UserConfig "
+                "where QQ=%lld) and to_days(now()) - "
+                "to_days(LastUpdate)=%d and mode=\'%c\'",
+                qq,
+                days_ago,
+                mode);
             json p;
             try {
                 p = Select(buffer)[0];
@@ -658,10 +657,7 @@ namespace Sayobot {
 
         bool UserExist(int64_t qq) {
             char buffer[512];
-            sprintf_s(buffer,
-                      512,
-                      "select * from UserConfig where qq=%lld",
-                      qq);
+            sprintf_s(buffer, 512, "select * from UserConfig where qq=%lld", qq);
             json p;
             try {
                 p = Select(buffer)[0];
@@ -685,20 +681,10 @@ namespace Sayobot {
             }
             return true;
         }
-        /*
-         * 关闭数据库连接
-         * 这是个好习惯
-         */
-        void Close() {
-            if (this->conn.net.vio != NULL) mysql_close(&this->conn);
-        }
-
-        ~Database() {
-            Close();
-        }
 
     private:
-        MYSQL conn;
+        MYSQL stMysql;
+        static Database* _conn;
     };
 } // namespace Sayobot
 #endif

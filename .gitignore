@@ -1,9 +1,7 @@
-.git
-.idea
-.vs
-.vscode
-.vscode/settings.json
-.vscode/c_cpp_properties.json
+.git/
+.idea/
+.vs/
+.vscode/
 build
 out
 cmake-build-*
@@ -12,4 +10,5 @@ scripts/install.ps1
 *.lib
 *.a
 *.dylib
-data
+data/
+colors.xml

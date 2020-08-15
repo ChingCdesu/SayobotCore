@@ -37,9 +37,9 @@ CQ_INIT {
     // 插件启用
     cq::on_enable([] {
         try {
-            logging::info("启用", "插件已启用");
+            logging::info(SAYOBOT_VERSION, "Sayobot插件已启动");
             Magick::InitializeMagick(SAYOBOT_FOLDER);
-            logging::info("初始化", "Magick++初始化完毕");
+            logging::info(SAYOBOT_VERSION, "Magick++初始化完毕");
             SetCurrentDirectory(SAYOBOT_FOLDER);
             try {
                 Sayobot::SharedMemory<Sayobot::MessageListener> memory(
@@ -53,22 +53,22 @@ CQ_INIT {
                         listener->AddGroup(group.group_id);
                 }
                 memory.Disconnect();
-                logging::info("初始化", "共享内存初始化完毕");
+                logging::info(SAYOBOT_VERSION, "共享内存初始化完毕");
 #ifdef CQ_STD_MODE
                 ofstream logFile("../log/v2/command_execute.log");
                 logFile << SAYOBOT_VERSION << std::endl;
                 logFile.close();
 #endif
-                logging::info("初始化", "插件初始化完毕");
+                logging::info(SAYOBOT_VERSION, "插件初始化完毕");
             } catch (ApiError &ex) {
-                logging::warning("获取group失败", "请检查权限是否打开");
+                logging::warning(SAYOBOT_VERSION, "获取group失败, 请检查权限是否打开");
             } catch (Sayobot::BaseException &ex) {
-                logging::error(ex.Type(), "无法连接到共享内存块");
+                logging::error(SAYOBOT_VERSION, "无法连接到共享内存块");
             } catch (std::exception &ex) {
-                logging::error("初始化失败", ex.what());
+                logging::error(SAYOBOT_VERSION, "初始化失败");
             }
         } catch (...) {
-            logging::error("Fatal", "启用插件时，发生错误");
+            logging::error(SAYOBOT_VERSION, "启用插件时，发生错误");
         }
     });
     // 收到私聊消息
@@ -450,10 +450,9 @@ CQ_INIT {
                 send_private_message(SAYOKO, msg);
             } else if (e.sub_type == cq::GroupRequestEvent::SubType::ADD) {
                 if (e.group_id == SAYOBOT_GROUP) {
-                    Sayobot::Database db;
-                    db.Connect();
+                    auto db = Sayobot::Database::GetInstance();
                     Sayobot::UserConfigData d;
-                    int ret = db.GetUserConfig(e.user_id, d);
+                    int ret = db->GetUserConfig(e.user_id, d);
                     if (ret == 0) {
                         cq::set_group_request(
                             e.flag, e.sub_type, cq::RequestEvent::Operation::APPROVE);
@@ -473,5 +472,17 @@ CQ_INIT {
                       e.comment.c_str());
             send_private_message(SAYOKO, msg);
         }
+    });
+
+    cq::on_disable([](){
+        auto db = Sayobot::Database::GetInstance();
+        db->Dispose();
+        logging::debug(SAYOBOT_VERSION, "数据库已关闭");
+    });
+
+    cq::on_coolq_exit([](){
+      auto db = Sayobot::Database::GetInstance();
+      db->Dispose();
+      logging::debug(SAYOBOT_VERSION, "数据库已关闭");
     });
 }

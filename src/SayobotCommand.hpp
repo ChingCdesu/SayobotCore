@@ -48,7 +48,6 @@ using Message = cq::message::Message;
 using MessageSegment = cq::message::MessageSegment;
 
 namespace Sayobot {
-
     class Sudo {
     public:
         Sudo(const std::vector<std::string> list) {
@@ -100,21 +99,18 @@ namespace Sayobot {
 
     private:
         void SqlOperation() {
-            Sayobot::Database db;
-            db.Connect();
+            auto db = Sayobot::Database::GetInstance();
             cq::utils::string_trim(this->args[0]);
             std::string type = this->args[0].substr(0, 6);
             std::transform(type.begin(), type.end(), type.begin(), ::tolower);
 
             if (!type.compare("select")) {
-                json res = db.Select(this->args[0]);
+                json res = db->Select(this->args[0]);
                 this->result = res.dump(2);
             } else {
-                db.Execute(this->args[0]);
-                db.Commit();
+                db->Execute(this->args[0]);
                 this->result = "数据库更新成功";
             }
-            db.Close();
             // cq::utils::string_trim(this->result);
         }
 
@@ -148,8 +144,7 @@ namespace Sayobot {
                 qq_or_nick += ' ';
             }
 
-            Sayobot::Database db;
-            db.Connect();
+            auto db = Sayobot::Database::GetInstance();
             char *buffer = new char[1024];
             sprintf_s(buffer,
                       1024,
@@ -158,9 +153,8 @@ namespace Sayobot {
                       qq_or_nick.c_str());
             json data;
             try {
-                data = db.Select(buffer)[0];
+                data = db->Select(buffer)[0];
             } catch (Sayobot::QueryException &ex) {
-                db.Close();
                 if (1065 == ex.Code())
                     throw UserNotFound("这个人好像没有绑定",
                                        Sayobot::USER_OTHER_NOT_SET);
@@ -198,9 +192,9 @@ namespace Sayobot {
                       ui.playcount,
                       ui.level,
                       mode_str[mode_num]);
-            db.Insert(buffer);
+            db->Insert(buffer);
             this->result = "更新完成";
-            db.Close();
+
             delete[] buffer;
         }
 
@@ -330,10 +324,10 @@ namespace Sayobot {
             this->group = group;
             this->target = target;
 
-            std::string c = Command;
-            cq::utils::string_trim(c);
+            std::string com = Command;
+            cq::utils::string_trim(com);
 
-            std::stringstream ss(c);
+            std::stringstream ss(com);
             this->args.clear();
             ss >> this->cmd;
 
@@ -425,8 +419,7 @@ namespace Sayobot {
 
         void UserStat(int mode) {
             const char mode_str[4] = {'o', 't', 'c', 'm'};
-            Sayobot::Database db;
-            db.Connect();
+            auto db = Sayobot::Database::GetInstance();
             int ret;
             UserPanelData panelData;
             panelData.compareDays = 0;
@@ -455,17 +448,17 @@ namespace Sayobot {
             nick = nick.substr(0, nick.size() - 1);
 
             if (0 == this->args.size()) {
-                ret = db.GetUserConfig(this->sender, panelData.config);
+                ret = db->GetUserConfig(this->sender, panelData.config);
                 if (1065 == ret) {
                     throw UserNotFound("阁下还没绑定哦，用set把阁下的名字告诉我吧",
                                        Sayobot::USER_SELF_NOT_SET);
                 } else if (0 != ret) {
                 }
 
-                ret = db.GetUserStatus(this->sender,
-                                       panelData.compareDays,
-                                       mode_str[mode],
-                                       panelData.stat);
+                ret = db->GetUserStatus(this->sender,
+                                        panelData.compareDays,
+                                        mode_str[mode],
+                                        panelData.stat);
 
                 if (1065 == ret && 0 != panelData.compareDays) {
                     throw Sayobot::BaseException(
@@ -486,14 +479,14 @@ namespace Sayobot {
                     std::string qq_str = (*it)[1].str();
                     int64_t qq = std::stoll(qq_str);
 
-                    ret = db.GetUserConfig(qq, panelData.config);
+                    ret = db->GetUserConfig(qq, panelData.config);
                     if (1065 == ret) {
                         throw UserNotFound("小夜还不认识这个人哦，阁下把他介绍给我吧",
                                            Sayobot::USER_OTHER_NOT_SET);
                     } else if (0 != ret) {
                     }
 
-                    ret = db.GetUserStatus(
+                    ret = db->GetUserStatus(
                         qq, panelData.compareDays, mode_str[mode], panelData.stat);
 
                     if (1065 == ret && 0 != panelData.compareDays) {
@@ -506,11 +499,11 @@ namespace Sayobot {
                     }
 
                 } else {
-                    ret = db.GetUserConfig(nick, panelData.config);
+                    ret = db->GetUserConfig(nick, panelData.config);
                     if (1065 == ret) {
-                        db.GetUserConfig(-1, panelData.config);
+                        db->GetUserConfig(-1, panelData.config);
                     }
-                    ret = db.GetUserStatus(
+                    ret = db->GetUserStatus(
                         nick, panelData.compareDays, mode_str[mode], panelData.stat);
 
                     if (1065 == ret && 0 != panelData.compareDays) {
@@ -555,10 +548,8 @@ namespace Sayobot {
 
             osu_api::user_info info;
             osu_api::api_v1::GetUser(nick, osu_api::mode::std, &info);
-            Sayobot::Database db;
-            db.Connect();
-            db.NewUser(this->sender, info.username, info.user_id);
-            db.Close();
+            auto db = Sayobot::Database::GetInstance();
+            db->NewUser(this->sender, info.username, info.user_id);
 
             this->result =
                 "阁下绑定成功啦，发送指令！o就可以查看阁下的资料卡。还有其"
@@ -566,14 +557,13 @@ namespace Sayobot {
         }
 
         void UserUnset() {
-            Sayobot::Database db;
-            db.Connect();
-            if (!db.UserExist(this->sender)) {
+            auto db = Sayobot::Database::GetInstance();
+            if (!db->UserExist(this->sender)) {
                 throw Sayobot::UserNotFound("阁下还没绑定哦",
                                             Sayobot::USER_SELF_NOT_SET);
             }
-            db.UserUnset(this->sender);
-            db.Close();
+            db->UserUnset(this->sender);
+
             this->result =
                 "啊咧咧，，阁下你叫什么名字呀，突然不记得了，快用 !set 告诉我吧";
         }
@@ -918,20 +908,18 @@ namespace Sayobot {
                 color = "default";
             }
             int ret;
-            Sayobot::Database db;
-            db.Connect();
-            if (!db.UserExist(this->sender)) {
+            auto db = Sayobot::Database::GetInstance();
+            if (!db->UserExist(this->sender)) {
                 throw Sayobot::UserNotFound(
                     "阁下还没绑定哦，用set把阁下的名字告诉我吧",
                     Sayobot::USER_SELF_NOT_SET);
             }
             if (color.compare("default")) {
-                ret = db.UserChangeConfig(this->sender, fontColors[index], color);
+                ret = db->UserChangeConfig(this->sender, fontColors[index], color);
             } else {
-                ret = db.UserResetConfig(this->sender, fontColors[index]);
+                ret = db->UserResetConfig(this->sender, fontColors[index]);
             }
-            ret = db.UserChangeConfig(this->sender, fields[index], filename);
-            db.Close();
+            ret = db->UserChangeConfig(this->sender, fields[index], filename);
 
             if (ret == 0) {
                 if (0 == this->group) {
@@ -950,16 +938,15 @@ namespace Sayobot {
                                                      "更新个签有1个参数哦阁下",
                                                      Sayobot::INVAILD_ARGUMENT_COUNT);
 
-            Sayobot::Database db;
-            db.Connect();
-            if (!db.UserExist(this->sender)) {
+            auto db = Sayobot::Database::GetInstance();
+            if (!db->UserExist(this->sender)) {
                 throw Sayobot::UserNotFound(
                     "阁下还没绑定哦，用set把阁下的名字告诉我吧",
                     Sayobot::USER_SELF_NOT_SET);
             }
             cq::utils::string_replace(this->args[0], "\'", "\\\'");
-            int ret = db.UserChangeConfig(this->sender, "Sign", this->args[0]);
-            db.Close();
+            int ret = db->UserChangeConfig(this->sender, "Sign", this->args[0]);
+
             if (0 == ret) {
                 if (0 == this->group) {
                     this->result = "更新成功";
@@ -980,15 +967,14 @@ namespace Sayobot {
             if (!fileExist(BACKGROUND_PATH + filename))
                 throw Sayobot::FileNotFound("没有这个背景哦阁下",
                                             Sayobot::BACKGROUND_NOT_FOUND);
-            Sayobot::Database db;
-            db.Connect();
-            if (!db.UserExist(this->sender)) {
+            auto db = Sayobot::Database::GetInstance();
+            if (!db->UserExist(this->sender)) {
                 throw Sayobot::UserNotFound(
                     "阁下还没绑定哦，用set把阁下的名字告诉我吧",
                     Sayobot::USER_SELF_NOT_SET);
             }
-            db.UserChangeConfig(this->sender, "Background", filename);
-            db.Close();
+            db->UserChangeConfig(this->sender, "Background", filename);
+
             if (0 == this->group) {
                 this->result = "更新成功";
             } else {
@@ -1013,15 +999,14 @@ namespace Sayobot {
                     Sayobot::INVAILD_OPACITY);
             }
 
-            Sayobot::Database db;
-            db.Connect();
-            if (!db.UserExist(this->sender)) {
+            auto db = Sayobot::Database::GetInstance();
+            if (!db->UserExist(this->sender)) {
                 throw Sayobot::UserNotFound(
                     "阁下还没绑定哦，用set把阁下的名字告诉我吧",
                     Sayobot::USER_SELF_NOT_SET);
             }
-            db.UserChangeConfig(this->sender, "Opacity", this->args[0]);
-            db.Close();
+            db->UserChangeConfig(this->sender, "Opacity", this->args[0]);
+
             if (0 == this->group) {
                 this->result = "更新成功";
             } else {
@@ -1033,11 +1018,9 @@ namespace Sayobot {
             std::default_random_engine random(time(NULL));
             std::uniform_int_distribution<int> dist(100000, 900000);
             char temp[512];
-            Sayobot::Database db;
-            db.Connect();
+            auto db = Sayobot::Database::GetInstance();
             UserConfigData config = {0};
-            int ret = db.GetUserConfig(this->sender, config);
-            db.Close();
+            int ret = db->GetUserConfig(this->sender, config);
 
             if (1065 == ret) {
                 throw Sayobot::UserNotFound(
@@ -1175,7 +1158,7 @@ namespace Sayobot {
             const std::vector<char> mode_char = {'o', 't', 'c', 'm'};
             int64_t qq = this->sender;
             std::string nick = "";
-            Sayobot::Database db;
+            auto db = Sayobot::Database::GetInstance();
             json pp_diff_json;
             UserStatData now_stat;
             double diff_pp, now_pp;
@@ -1208,7 +1191,6 @@ namespace Sayobot {
                 }
             }
 
-            db.Connect();
             try {
                 char query[512];
                 sprintf_s(query,
@@ -1218,14 +1200,14 @@ namespace Sayobot {
                           qq ? std::to_string(qq).c_str() : nick.c_str(),
                           mode_char[mode - 1]);
                 try {
-                    pp_diff_json = db.Select(query)[0];
+                    pp_diff_json = db->Select(query)[0];
                 } catch (Sayobot::QueryException &ex) {
                     pp_diff_json["diff_pp"] = "0.0";
                 }
                 if (qq) {
-                    db.GetUserLatestedStatus(qq, mode_char[mode - 1], now_stat);
+                    db->GetUserLatestedStatus(qq, mode_char[mode - 1], now_stat);
                 } else {
-                    db.GetUserLatestedStatus(nick, mode_char[mode - 1], now_stat);
+                    db->GetUserLatestedStatus(nick, mode_char[mode - 1], now_stat);
                 }
             } catch (Sayobot::QueryException &ex) {
                 if (ex.Code() == 1065) {
@@ -1321,9 +1303,8 @@ namespace Sayobot {
         }
 
         void Reset() {
-            Sayobot::Database db;
-            db.Connect();
-            if (!db.UserExist(this->sender)) {
+            auto db = Sayobot::Database::GetInstance();
+            if (!db->UserExist(this->sender)) {
                 throw Sayobot::UserNotFound(
                     "阁下还没绑定哦，用set把阁下的名字告诉我吧",
                     Sayobot::USER_SELF_NOT_SET);
@@ -1348,9 +1329,9 @@ namespace Sayobot {
                                                   "timecolor",
                                                   "opacity"};
             for (auto it = fields.begin(); it != fields.end(); ++it) {
-                db.UserResetConfig(this->sender, *it);
+                db->UserResetConfig(this->sender, *it);
             }
-            db.Close();
+
             this->result = "已经恢复到初始状态了哦";
         }
 

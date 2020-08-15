@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD 17) # 设置 C++ 标准版本为 C++17, 必须
 if (MSVC AND (CMAKE_SIZEOF_VOID_P EQUAL 4))
     message(STATUS "project will build in std and dev mode")
 else()
-    message(AUTHOR_WARNING "project will build with dev mode only")
+    message(AUTHOR_WARNING "project will build in dev mode only")
 endif()
 
 if (WIN32)

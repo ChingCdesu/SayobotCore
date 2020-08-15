@@ -11,6 +11,7 @@
 
 #include <time.h>
 
+#include <iostream>
 #include <string>
 #include <vector>
 
@@ -20,7 +21,7 @@
 #define OSU_API_V1 "https://osu.ppy.sh/api/"
 #define SAYO_PPY_API "https://api.sayobot.cn/ppy/"
 #define OSU_FILE_URL "https://osu.ppy.sh/osu/"
-#define OSU_KEY "1b801cfce36ac400917b3551af8aca91538e8617"
+#define OSU_KEY ""
 
 // only for beatmap info with bid
 #define SAYO_API "https://api.sayobot.cn/beatmapinfo?0="
@@ -105,6 +106,7 @@ namespace osu_api {
     public:
         static void GetBeatmap(int bid, beatmap_info *info) {
             char url[512];
+
             sprintf(url, SAYO_PPY_API "get_beatmaps?b=%d", bid);
             std::string response;
             long status_code = Sayobot::NetConnection::Get(url, response);
@@ -119,6 +121,7 @@ namespace osu_api {
                                              Sayobot::USER_BANNED);
             }
             data = data[0];
+
             info->approved =
                 (beatmap_status)std::stoi(data["approved"].get<std::string>());
             tm time_temp;
@@ -332,13 +335,12 @@ namespace osu_api {
             info->total_hits = std::stoll(data["count300"].get<std::string>())
                                + std::stoll(data["count100"].get<std::string>())
                                + std::stoll(data["count50"].get<std::string>());
-
         }
 
         static void GetUser(const std::string &username, mode mode, user_info *info) {
             char url[512];
-            sprintf(url, SAYO_PPY_API "get_user?u=%s&m=%d", username.c_str(),
-                    (int)mode);
+            sprintf(
+                url, SAYO_PPY_API "get_user?u=%s&m=%d", username.c_str(), (int)mode);
             std::string response;
             long status_code = Sayobot::NetConnection::Get(url, response);
             if (status_code != 200) {
@@ -392,7 +394,9 @@ namespace osu_api {
         static void GetUserBest(int uid, int count, mode mode,
                                 std::vector<score_info> &info) {
             char url[512];
-            sprintf(url, SAYO_PPY_API "get_user_best?u=%d&m=%d&limit=%d", uid,
+            sprintf(url,
+                    SAYO_PPY_API "get_user_best?u=%d&m=%d&limit=%d",
+                    uid,
                     (int)mode,
                     count);
             std::string response;
@@ -433,8 +437,7 @@ namespace osu_api {
 
         static void GetUserRecent(int uid, mode mode, score_info *info) {
             char url[512];
-            sprintf(url, SAYO_PPY_API "get_user_recent?u=%d&m=%d", uid,
-                    (int)mode);
+            sprintf(url, SAYO_PPY_API "get_user_recent?u=%d&m=%d", uid, (int)mode);
             std::string response;
             long status_code = Sayobot::NetConnection::Get(url, response);
             if (status_code != 200) {
@@ -470,7 +473,9 @@ namespace osu_api {
         static void GetUserRecent(const std::string &username, mode mode,
                                   score_info *info) {
             char url[512];
-            sprintf(url, SAYO_PPY_API "get_user_recent?u=%s&m=%d", username.c_str(),
+            sprintf(url,
+                    SAYO_PPY_API "get_user_recent?u=%s&m=%d",
+                    username.c_str(),
                     (int)mode);
             std::string response;
             long status_code = Sayobot::NetConnection::Get(url, response);
